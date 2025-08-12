@@ -20,6 +20,9 @@ window.addEventListener("load", function () {
   form?.addEventListener("submit", sendMessage);
   const clearButton = document.getElementById("clearButton");
   clearButton?.addEventListener("click", clearConversation);
+
+  // Set up mobile viewport handling
+  setupMobileViewport();
 });
 
 async function sendMessage(e: Event) {
@@ -268,10 +271,17 @@ function addMessage(
   }
 
   if (!messagesContainer) return null;
+  
+  // Check if we need to scroll to maintain bottom position
+  const wasAtBottom = messagesContainer.scrollTop >= 
+    messagesContainer.scrollHeight - messagesContainer.clientHeight - 1;
+  
   messagesContainer.appendChild(messageDiv);
 
-  // Scroll to bottom
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  // Only auto-scroll if user was already at the bottom
+  if (wasAtBottom) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
 
   if (returnElement) {
     return messageDiv;
@@ -287,10 +297,17 @@ function updateMessageContent(
   if (!messageContent) return;
   messageContent.textContent = newContent;
 
-  // Scroll to bottom
+  // Check if we need to scroll to maintain bottom position
   const messagesContainer = document.getElementById("messages");
   if (!messagesContainer) return;
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  
+  const wasAtBottom = messagesContainer.scrollTop >= 
+    messagesContainer.scrollHeight - messagesContainer.clientHeight - 1;
+  
+  // Only auto-scroll if user was already at the bottom
+  if (wasAtBottom) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
 }
 
 function updateStatus(message: string) {
@@ -313,11 +330,16 @@ function showTypingIndicator(show: boolean) {
     typingIndicator?.classList.remove("show");
   }
 
-  // Scroll to bottom when showing/hiding
+  // Scroll to bottom when showing/hiding if user was already at bottom
   const messagesContainer = document.getElementById("messages");
   setTimeout(() => {
     if (!messagesContainer) return;
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    const wasAtBottom = messagesContainer.scrollTop >= 
+      messagesContainer.scrollHeight - messagesContainer.clientHeight - 1;
+    
+    if (wasAtBottom || show) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
   }, 100);
 }
 
@@ -335,43 +357,114 @@ function loadConversationFromStorage() {
     if (stored) {
       conversationHistory = JSON.parse(stored);
 
-      // Clear existing messages except system message
+      // Clear existing messages
       const messagesContainer = document.getElementById("messages");
       if (messagesContainer) {
-        const systemMessage =
-          messagesContainer.querySelector(".message.system");
         messagesContainer.innerHTML = "";
-        if (systemMessage) {
-          messagesContainer.appendChild(systemMessage);
-        }
       }
 
-      // Recreate messages from history
-      conversationHistory.forEach((msg) => {
-        addMessage(msg.role, msg.content, false, msg.model);
-      });
+      // Add system message if no conversation history
+      if (conversationHistory.length === 0) {
+        addSystemWelcomeMessage();
+      } else {
+        // Recreate messages from history
+        conversationHistory.forEach((msg) => {
+          addMessage(msg.role, msg.content, false, msg.model);
+        });
+      }
+
+      // Ensure we start at the bottom after loading
+      setTimeout(() => {
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }, 100);
+    } else {
+      // No stored conversation, add welcome message
+      addSystemWelcomeMessage();
     }
   } catch (error) {
     console.warn("Failed to load conversation from localStorage:", error);
     conversationHistory = [];
+    addSystemWelcomeMessage();
+  }
+}
+
+function addSystemWelcomeMessage() {
+  const messagesContainer = document.getElementById("messages");
+  if (messagesContainer) {
+    const systemMessage = document.createElement("div");
+    systemMessage.className = "message system";
+    const messageContent = document.createElement("div");
+    messageContent.className = "message-content";
+    messageContent.textContent = "Welcome! Start chatting with AI models on the Peerwave network. Your first few messages are free!";
+    systemMessage.appendChild(messageContent);
+    messagesContainer.appendChild(systemMessage);
   }
 }
 
 function clearConversation() {
-  if (confirm("Are you sure you want to clear the conversation?")) {
-    conversationHistory = [];
-    localStorage.removeItem(STORAGE_KEY);
+  // if (confirm("Are you sure you want to clear the conversation?")) {
+  conversationHistory = [];
+  localStorage.removeItem(STORAGE_KEY);
 
-    // Clear messages except system message
-    const messagesContainer = document.getElementById("messages");
-    if (messagesContainer) {
-      const systemMessage = messagesContainer.querySelector(".message.system");
-      messagesContainer.innerHTML = "";
-      if (systemMessage) {
-        messagesContainer.appendChild(systemMessage);
+  // Clear messages and add welcome message
+  const messagesContainer = document.getElementById("messages");
+  if (messagesContainer) {
+    messagesContainer.innerHTML = "";
+    addSystemWelcomeMessage();
+  }
+
+  updateStatus("Conversation cleared");
+  // }
+}
+
+function setupMobileViewport() {
+  // Handle viewport height changes for mobile keyboards
+  function updateViewportHeight() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty("--vh", `${vh}px`);
+  }
+
+  // Initial setup
+  updateViewportHeight();
+
+  // Listen for viewport changes (mobile keyboard, rotation)
+  window.addEventListener("resize", updateViewportHeight);
+  window.addEventListener("orientationchange", () => {
+    setTimeout(updateViewportHeight, 100);
+  });
+
+  // Handle input focus/blur for better mobile experience
+  const messageInput = document.getElementById(
+    "messageInput"
+  ) as HTMLInputElement;
+  if (messageInput) {
+    messageInput.addEventListener("focus", () => {
+      // Ensure input stays visible by scrolling messages container
+      if (window.innerWidth <= 768) {
+        const messagesContainer = document.getElementById("messages");
+        if (messagesContainer) {
+          setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }, 300);
+        }
       }
-    }
+    });
 
-    updateStatus("Conversation cleared");
+    messageInput.addEventListener("blur", () => {
+      setTimeout(updateViewportHeight, 300);
+    });
+  }
+
+  // Prevent zoom on input focus for iOS
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    const viewport = document.querySelector(
+      "meta[name=viewport]"
+    ) as HTMLMetaElement;
+    if (viewport) {
+      viewport.content =
+        "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
+    }
   }
 }
