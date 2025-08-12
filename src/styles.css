@@ -33,7 +33,9 @@ body {
   background: #16d2b9;
   color: #1a202c;
   padding: 20px;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .chat-header h1 {
@@ -164,12 +166,21 @@ form.input-form input::placeholder {
   cursor: not-allowed;
 }
 
-.status {
-  padding: 10px;
-  text-align: center;
+.status-indicator {
+  /* visibility: hidden; */
+  /* padding: 8px 16px; */
   font-size: 12px;
-  color: rgb(227, 238, 234);
+  color: #1a202c;
+  /* background: rgba(26, 32, 44, 0.1); */
+  /* border: 1px solid rgba(26, 32, 44, 0.2); */
+  border-radius: 8px;
+  min-width: 120px;
+  text-align: center;
 }
+
+/* .status-indicator:not(:empty) {
+  visibility: visible;
+} */
 
 .error {
   color: #ef4444;
