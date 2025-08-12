@@ -2,41 +2,42 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-  entry: "./src/index.ts", // Entry point of your TypeScript application
+  entry: "./src/index.ts",
   output: {
-    filename: "bundle.js", // Name of the bundled output file
-    path: path.resolve(__dirname, "dist"), // Output directory
-    clean: true, // Clean the output directory before each build
+    filename: "bundle.js",
+    path: path.resolve(__dirname, "dist"),
+    clean: true,
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: "./src/index.html", // Your custom template
+      template: "./src/index.html",
+      favicon: "./src/assets/favicon.ico",
     }),
   ],
   resolve: {
-    extensions: [".ts", ".js"], // Resolve these file extensions when importing
+    extensions: [".ts", ".js"],
   },
   module: {
     rules: [
       {
-        test: /\.tsx?$/, // Apply this rule to .ts and .tsx files
-        use: "ts-loader", // Use ts-loader to transpile TypeScript
-        exclude: /node_modules/, // Exclude dependencies
+        test: /\.tsx?$/,
+        use: "ts-loader",
+        exclude: /node_modules/,
       },
       {
-        test: /\.css$/, // Apply this rule to .css files
-        use: ["style-loader", "css-loader"], // Use css-loader then style-loader
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"],
       },
       {
-        test: /\.(png|jpe?g|gif|svg)$/i, // Match common image file types
-        type: "asset/resource", // Tells Webpack to emit the file and return the URL
+        test: /\.(png|jpe?g|gif|svg)$/i,
+        type: "asset/resource",
       },
     ],
   },
-  mode: "production", // Set Webpack mode (development or production)
+  mode: "production",
   devServer: {
-    static: path.resolve(__dirname, "dist"), // Serve static files from the 'dist' directory
-    port: 3003, // Serve the app on http://localhost:3003
-    open: true, // Automatically open the browser when the server starts
+    static: path.resolve(__dirname, "dist"),
+    port: 3003,
+    open: true,
   },
 };
