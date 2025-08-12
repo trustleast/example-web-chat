@@ -9,11 +9,13 @@ let conversationHistory: Array<{
 }> = [];
 let currentModel = "cheapest";
 const STORAGE_KEY = "peerwave_conversation";
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY = 1000; // 1 second base delay
 
 // Check for token in URL fragment on page load
 window.addEventListener("load", function () {
-  checkForAuthToken();
   loadConversationFromStorage();
+  checkForAuthToken();
   const form = document.querySelector("form");
   form?.addEventListener("submit", sendMessage);
   const clearButton = document.getElementById("clearButton");
@@ -25,7 +27,6 @@ async function sendMessage(e: Event) {
   const messageInput: HTMLInputElement | null = document.getElementById(
     "messageInput"
   ) as HTMLInputElement;
-  const sendButton = document.getElementById("sendButton") as HTMLButtonElement;
   const message = messageInput?.value.trim();
 
   if (!message) return;
@@ -34,6 +35,15 @@ async function sendMessage(e: Event) {
   addMessage("user", message);
   conversationHistory.push({ role: "user", content: message });
   saveConversationToStorage();
+
+  await sendWrapper();
+}
+
+async function sendWrapper() {
+  const messageInput: HTMLInputElement | null = document.getElementById(
+    "messageInput"
+  ) as HTMLInputElement;
+  const sendButton = document.getElementById("sendButton") as HTMLButtonElement;
 
   // Clear input and disable sending
   messageInput.value = "";
@@ -45,17 +55,16 @@ async function sendMessage(e: Event) {
   showTypingIndicator(true);
 
   try {
-    await handleStreamingResponse(message);
-  } catch (error) {
-    // Remove the last user message from history since the request failed
-    if (
-      conversationHistory.length > 0 &&
-      conversationHistory[conversationHistory.length - 1].role === "user"
-    ) {
-      conversationHistory.pop();
-      saveConversationToStorage();
+    const success = await handleStreamingResponseWithRetry();
+    if (!success) {
+      if (
+        conversationHistory.length > 0 &&
+        conversationHistory[conversationHistory.length - 1].role === "user"
+      ) {
+        conversationHistory.pop();
+        saveConversationToStorage();
+      }
     }
-    addMessage("system", `Error: ${error}`);
   } finally {
     // Re-enable input
     showTypingIndicator(false);
@@ -73,6 +82,18 @@ function checkForAuthToken() {
     accessToken = token;
     // Clear the token from the URL
     updateStatus("Authenticated successfully!");
+
+    // Auto-retry if last message is from user and no assistant response
+    if (conversationHistory.length === 0) return;
+
+    const lastMessage = conversationHistory[conversationHistory.length - 1];
+    if (lastMessage.role === "user") {
+      // Found a user message without an assistant response, auto-retry
+      updateStatus("Retrying last message after authentication...");
+      setTimeout(() => {
+        sendWrapper();
+      }, 50);
+    }
   }
 }
 
@@ -83,7 +104,35 @@ messageInput?.addEventListener("input", function () {
   this.style.height = this.scrollHeight + "px";
 });
 
-async function handleStreamingResponse(message: string) {
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function handleStreamingResponseWithRetry(
+  attemptNumber = 1
+): Promise<boolean> {
+  const success = await handleStreamingResponse();
+  if (success) {
+    return true;
+  }
+
+  if (attemptNumber < MAX_RETRY_ATTEMPTS) {
+    const delay = RETRY_DELAY * Math.pow(2, attemptNumber - 1); // Exponential backoff
+    updateStatus(
+      `Request failed, retrying in ${
+        delay / 1000
+      }s... (${attemptNumber}/${MAX_RETRY_ATTEMPTS})`
+    );
+    await sleep(delay);
+    return handleStreamingResponseWithRetry(attemptNumber + 1);
+  }
+
+  updateStatus("Request failed after maximum retries");
+
+  return false;
+}
+
+async function handleStreamingResponse(): Promise<boolean> {
   // Get last 20 messages for context (40 total with responses)
   const recentHistory = conversationHistory.slice(-20);
 
@@ -108,17 +157,15 @@ async function handleStreamingResponse(message: string) {
     body: JSON.stringify(requestBody),
   });
 
-  // Handle payment required (need authentication)
   if (!response.ok) {
     const location = response.headers.get("Location");
     if (location) {
       addMessage("system", "Redirecting to authenticate...");
       window.location.href = location;
-      return;
+      return true;
     }
 
-    const errorText = await response.text();
-    throw new Error(`Chat request failed: ${response.status} - ${errorText}`);
+    return false;
   }
 
   const reader = response.body?.getReader();
@@ -132,7 +179,7 @@ async function handleStreamingResponse(message: string) {
     const { value, done } = await reader!.read();
 
     if (done) {
-      return;
+      return true;
     }
 
     const decoded = decoder.decode(value, { stream: true });
@@ -192,6 +239,8 @@ async function handleStreamingResponse(message: string) {
     });
     saveConversationToStorage();
   }
+
+  return true;
 }
 
 function addMessage(
