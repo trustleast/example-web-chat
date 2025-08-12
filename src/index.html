@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peerwave Chat</title>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h1>Peerwave Chat</h1>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="message system">
+          <div class="message-content">
+            Welcome! Start chatting with AI models on the Peerwave network. Your
+            first few messages are free!
+          </div>
+        </div>
+      </div>
+
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="message-content">AI is typing...</div>
+      </div>
+
+      <div class="input-section">
+        <div class="input-form">
+          <form>
+            <input
+              id="messageInput"
+              placeholder="Type your message..."
+              rows="1"
+            ></input>
+            <button class="send-button" type="submit" id="sendButton">
+              Send
+            </button>
+          </form>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+  </body>
+</html>
