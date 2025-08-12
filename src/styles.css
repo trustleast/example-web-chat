@@ -36,9 +36,7 @@ body {
   background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
   color: white;
   padding: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  text-align: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -128,6 +126,15 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.model-indicator {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  text-align: left;
+  font-style: italic;
+  opacity: 0.8;
+}
+
 .message.system .message-content {
   background: rgba(99, 102, 241, 0.1);
   color: #cbd5e1;
@@ -205,41 +212,41 @@ form.input-form input::placeholder {
   box-shadow: none;
 }
 
-.header-controls {
+.input-footer {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  margin-top: 12px;
+  min-height: 20px;
 }
 
-.clear-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 8px;
-  color: white;
+.clear-chat-link {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+  font-family: inherit;
 }
 
-.clear-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
+.clear-chat-link:hover {
+  color: #06b6d4;
 }
 
 .status-indicator {
-  font-size: 12px;
-  color: white;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  min-width: 100px;
+  font-size: 11px;
+  color: #64748b;
+  padding: 4px 8px;
+  background: rgba(51, 65, 85, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  min-width: 80px;
   text-align: center;
   opacity: 0;
   transition: opacity 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .status-indicator:not(:empty) {

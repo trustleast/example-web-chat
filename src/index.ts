@@ -2,7 +2,12 @@ import "./styles.css"; // We will populate this file in next sub-chapter
 
 const API_URL = "https://api.peerwave.ai";
 let accessToken: string | null = null;
-let conversationHistory: Array<{role: string, content: string}> = [];
+let conversationHistory: Array<{
+  role: string;
+  content: string;
+  model?: string;
+}> = [];
+let currentModel = "cheapest";
 const STORAGE_KEY = "peerwave_conversation";
 
 // Check for token in URL fragment on page load
@@ -42,6 +47,14 @@ async function sendMessage(e: Event) {
   try {
     await handleStreamingResponse(message);
   } catch (error) {
+    // Remove the last user message from history since the request failed
+    if (
+      conversationHistory.length > 0 &&
+      conversationHistory[conversationHistory.length - 1].role === "user"
+    ) {
+      conversationHistory.pop();
+      saveConversationToStorage();
+    }
     addMessage("system", `Error: ${error}`);
   } finally {
     // Re-enable input
@@ -73,7 +86,7 @@ messageInput?.addEventListener("input", function () {
 async function handleStreamingResponse(message: string) {
   // Get last 20 messages for context (40 total with responses)
   const recentHistory = conversationHistory.slice(-20);
-  
+
   const requestBody = {
     model: "cheapest",
     messages: recentHistory,
@@ -103,9 +116,7 @@ async function handleStreamingResponse(message: string) {
       window.location.href = location;
       return;
     }
-  }
 
-  if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Chat request failed: ${response.status} - ${errorText}`);
   }
@@ -114,6 +125,8 @@ async function handleStreamingResponse(message: string) {
   const decoder = new TextDecoder();
   let assistantMessage = "";
   let messageElement: HTMLDivElement | null = null;
+
+  let handledModel = "";
 
   const readStreamChunk = async () => {
     const { value, done } = await reader!.read();
@@ -137,6 +150,10 @@ async function handleStreamingResponse(message: string) {
             continue;
           }
 
+          if (data.model) {
+            handledModel = data.model;
+          }
+
           // Handle regular streaming message
           if (data.message && data.message.content) {
             assistantMessage += data.message.content;
@@ -144,7 +161,12 @@ async function handleStreamingResponse(message: string) {
             // Create or update the assistant message element
             if (!messageElement) {
               showTypingIndicator(false);
-              messageElement = addMessage("assistant", assistantMessage, true);
+              messageElement = addMessage(
+                "assistant",
+                assistantMessage,
+                true,
+                handledModel
+              );
             } else {
               updateMessageContent(messageElement, assistantMessage);
             }
@@ -160,10 +182,14 @@ async function handleStreamingResponse(message: string) {
   };
 
   await readStreamChunk();
-  
+
   // Add final assistant message to history and save
   if (assistantMessage) {
-    conversationHistory.push({ role: "assistant", content: assistantMessage });
+    conversationHistory.push({
+      role: "assistant",
+      content: assistantMessage,
+      model: handledModel,
+    });
     saveConversationToStorage();
   }
 }
@@ -171,7 +197,8 @@ async function handleStreamingResponse(message: string) {
 function addMessage(
   role: string,
   content: string,
-  returnElement = false
+  returnElement = false,
+  model?: string
 ): HTMLDivElement | null {
   const messagesContainer = document.getElementById("messages");
   const messageDiv = document.createElement("div");
@@ -182,6 +209,15 @@ function addMessage(
   messageContent.textContent = content;
 
   messageDiv.appendChild(messageContent);
+
+  // Add model indicator for assistant messages
+  if (role === "assistant" && model) {
+    const modelIndicator = document.createElement("div");
+    modelIndicator.className = "model-indicator";
+    modelIndicator.textContent = `${model}`;
+    messageDiv.appendChild(modelIndicator);
+  }
+
   if (!messagesContainer) return null;
   messagesContainer.appendChild(messageDiv);
 
@@ -249,20 +285,21 @@ function loadConversationFromStorage() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       conversationHistory = JSON.parse(stored);
-      
+
       // Clear existing messages except system message
       const messagesContainer = document.getElementById("messages");
       if (messagesContainer) {
-        const systemMessage = messagesContainer.querySelector(".message.system");
+        const systemMessage =
+          messagesContainer.querySelector(".message.system");
         messagesContainer.innerHTML = "";
         if (systemMessage) {
           messagesContainer.appendChild(systemMessage);
         }
       }
-      
+
       // Recreate messages from history
-      conversationHistory.forEach(msg => {
-        addMessage(msg.role, msg.content);
+      conversationHistory.forEach((msg) => {
+        addMessage(msg.role, msg.content, false, msg.model);
       });
     }
   } catch (error) {
@@ -275,7 +312,7 @@ function clearConversation() {
   if (confirm("Are you sure you want to clear the conversation?")) {
     conversationHistory = [];
     localStorage.removeItem(STORAGE_KEY);
-    
+
     // Clear messages except system message
     const messagesContainer = document.getElementById("messages");
     if (messagesContainer) {
@@ -285,7 +322,7 @@ function clearConversation() {
         messagesContainer.appendChild(systemMessage);
       }
     }
-    
+
     updateStatus("Conversation cleared");
   }
 }
