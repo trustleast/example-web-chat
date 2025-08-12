@@ -2,12 +2,17 @@ import "./styles.css"; // We will populate this file in next sub-chapter
 
 const API_URL = "https://api.peerwave.ai";
 let accessToken: string | null = null;
+let conversationHistory: Array<{role: string, content: string}> = [];
+const STORAGE_KEY = "peerwave_conversation";
 
 // Check for token in URL fragment on page load
 window.addEventListener("load", function () {
   checkForAuthToken();
+  loadConversationFromStorage();
   const form = document.querySelector("form");
   form?.addEventListener("submit", sendMessage);
+  const clearButton = document.getElementById("clearButton");
+  clearButton?.addEventListener("click", clearConversation);
 });
 
 async function sendMessage(e: Event) {
@@ -20,8 +25,10 @@ async function sendMessage(e: Event) {
 
   if (!message) return;
 
-  // Add user message to chat
+  // Add user message to chat and history
   addMessage("user", message);
+  conversationHistory.push({ role: "user", content: message });
+  saveConversationToStorage();
 
   // Clear input and disable sending
   messageInput.value = "";
@@ -64,14 +71,12 @@ messageInput?.addEventListener("input", function () {
 });
 
 async function handleStreamingResponse(message: string) {
+  // Get last 20 messages for context (40 total with responses)
+  const recentHistory = conversationHistory.slice(-20);
+  
   const requestBody = {
     model: "cheapest",
-    messages: [
-      {
-        role: "user",
-        content: message,
-      },
-    ],
+    messages: recentHistory,
   };
 
   const headers: Record<string, string> = {
@@ -155,6 +160,12 @@ async function handleStreamingResponse(message: string) {
   };
 
   await readStreamChunk();
+  
+  // Add final assistant message to history and save
+  if (assistantMessage) {
+    conversationHistory.push({ role: "assistant", content: assistantMessage });
+    saveConversationToStorage();
+  }
 }
 
 function addMessage(
@@ -223,4 +234,58 @@ function showTypingIndicator(show: boolean) {
     if (!messagesContainer) return;
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }, 100);
+}
+
+function saveConversationToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversationHistory));
+  } catch (error) {
+    console.warn("Failed to save conversation to localStorage:", error);
+  }
+}
+
+function loadConversationFromStorage() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      conversationHistory = JSON.parse(stored);
+      
+      // Clear existing messages except system message
+      const messagesContainer = document.getElementById("messages");
+      if (messagesContainer) {
+        const systemMessage = messagesContainer.querySelector(".message.system");
+        messagesContainer.innerHTML = "";
+        if (systemMessage) {
+          messagesContainer.appendChild(systemMessage);
+        }
+      }
+      
+      // Recreate messages from history
+      conversationHistory.forEach(msg => {
+        addMessage(msg.role, msg.content);
+      });
+    }
+  } catch (error) {
+    console.warn("Failed to load conversation from localStorage:", error);
+    conversationHistory = [];
+  }
+}
+
+function clearConversation() {
+  if (confirm("Are you sure you want to clear the conversation?")) {
+    conversationHistory = [];
+    localStorage.removeItem(STORAGE_KEY);
+    
+    // Clear messages except system message
+    const messagesContainer = document.getElementById("messages");
+    if (messagesContainer) {
+      const systemMessage = messagesContainer.querySelector(".message.system");
+      messagesContainer.innerHTML = "";
+      if (systemMessage) {
+        messagesContainer.appendChild(systemMessage);
+      }
+    }
+    
+    updateStatus("Conversation cleared");
+  }
 }
