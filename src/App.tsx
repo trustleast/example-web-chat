@@ -26,6 +26,11 @@ export const App: React.FC = () => {
     scrollToBottom();
   }, [messages, partialMessage]);
 
+  const handleDrag = () => {
+    inputRef.current?.blur();
+    navigator.virtualKeyboard?.hide();
+  };
+
   useEffect(() => {
     if ("visualViewport" in window) {
       window.visualViewport.addEventListener("resize", function (event) {
@@ -166,7 +171,11 @@ export const App: React.FC = () => {
         </svg>
       </button>
       <div className="chat-container">
-        <div className="messages-container">
+        <div
+          className="messages-container"
+          onDrag={handleDrag}
+          onTouchMove={handleDrag}
+        >
           {messages.map((message) => (
             <div
               key={message.id}
@@ -211,8 +220,21 @@ export const App: React.FC = () => {
               type="submit"
               disabled={isLoading || !inputValue.trim()}
               className="send-button"
+              aria-label="Send message"
             >
-              Send
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M22 2L11 13" />
+                <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+              </svg>
             </button>
           </form>
 
