@@ -1,6 +1,6 @@
 import "./styles.css"; // We will populate this file in next sub-chapter
 
-const API_URL = "https://api.peerwave.ai";
+const API_URL = "https://local.api.peerwave.ai:8080";
 let accessToken: string | null = null;
 let conversationHistory: Array<{
   role: string;
@@ -271,11 +271,12 @@ function addMessage(
   }
 
   if (!messagesContainer) return null;
-  
+
   // Check if we need to scroll to maintain bottom position
-  const wasAtBottom = messagesContainer.scrollTop >= 
+  const wasAtBottom =
+    messagesContainer.scrollTop >=
     messagesContainer.scrollHeight - messagesContainer.clientHeight - 1;
-  
+
   messagesContainer.appendChild(messageDiv);
 
   // Only auto-scroll if user was already at the bottom
@@ -300,10 +301,11 @@ function updateMessageContent(
   // Check if we need to scroll to maintain bottom position
   const messagesContainer = document.getElementById("messages");
   if (!messagesContainer) return;
-  
-  const wasAtBottom = messagesContainer.scrollTop >= 
+
+  const wasAtBottom =
+    messagesContainer.scrollTop >=
     messagesContainer.scrollHeight - messagesContainer.clientHeight - 1;
-  
+
   // Only auto-scroll if user was already at the bottom
   if (wasAtBottom) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -334,9 +336,10 @@ function showTypingIndicator(show: boolean) {
   const messagesContainer = document.getElementById("messages");
   setTimeout(() => {
     if (!messagesContainer) return;
-    const wasAtBottom = messagesContainer.scrollTop >= 
+    const wasAtBottom =
+      messagesContainer.scrollTop >=
       messagesContainer.scrollHeight - messagesContainer.clientHeight - 1;
-    
+
     if (wasAtBottom || show) {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -397,7 +400,8 @@ function addSystemWelcomeMessage() {
     systemMessage.className = "message system";
     const messageContent = document.createElement("div");
     messageContent.className = "message-content";
-    messageContent.textContent = "Welcome! Start chatting with AI models on the Peerwave network. Your first few messages are free!";
+    messageContent.textContent =
+      "Welcome! Start chatting with AI models on the Peerwave network. Your first few messages are free!";
     systemMessage.appendChild(messageContent);
     messagesContainer.appendChild(systemMessage);
   }
