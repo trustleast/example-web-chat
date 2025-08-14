@@ -299,6 +299,8 @@ form.input-form input::placeholder {
   body {
     padding: 0;
     align-items: flex-start;
+    /* Prevent pull-to-refresh */
+    overscroll-behavior-y: none;
   }
   
   .chat-container {
@@ -315,6 +317,8 @@ form.input-form input::placeholder {
     bottom: 0;
     display: flex;
     flex-direction: column;
+    /* Prevent pull-to-refresh on the container */
+    overscroll-behavior-y: none;
   }
 
   .messages {
@@ -326,6 +330,12 @@ form.input-form input::placeholder {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    /* Allow scrolling but prevent pull-to-refresh */
+    overscroll-behavior-y: contain;
+    /* Ensure scroll position is maintained */
+    scroll-behavior: smooth;
+    /* Ensure touch events work properly */
+    touch-action: pan-y;
   }
 
   .message-content {

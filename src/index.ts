@@ -1,6 +1,6 @@
-import "./styles.css"; // We will populate this file in next sub-chapter
+import "./styles.css";
 
-const API_URL = "https://local.api.peerwave.ai:8080";
+const API_URL = "https://api.peerwave.ai";
 let accessToken: string | null = null;
 let conversationHistory: Array<{
   role: string;
@@ -434,7 +434,17 @@ function setupMobileViewport() {
   updateViewportHeight();
 
   // Listen for viewport changes (mobile keyboard, rotation)
-  window.addEventListener("resize", updateViewportHeight);
+  window.addEventListener("resize", () => {
+    updateViewportHeight();
+    // Re-enable scrolling on resize events to handle keyboard dismissal
+    setTimeout(() => {
+      const messagesContainer = document.getElementById("messages");
+      if (messagesContainer && window.innerWidth <= 768) {
+        messagesContainer.scrollTop = messagesContainer.scrollTop;
+      }
+    }, 100);
+  });
+  
   window.addEventListener("orientationchange", () => {
     setTimeout(updateViewportHeight, 100);
   });
@@ -457,7 +467,22 @@ function setupMobileViewport() {
     });
 
     messageInput.addEventListener("blur", () => {
-      setTimeout(updateViewportHeight, 300);
+      // Handle virtual keyboard dismissal
+      setTimeout(() => {
+        updateViewportHeight();
+        
+        // Re-enable scrolling after keyboard dismissal
+        const messagesContainer = document.getElementById("messages");
+        if (messagesContainer && window.innerWidth <= 768) {
+          // Force a repaint to ensure scrolling works
+          messagesContainer.style.overflow = 'hidden';
+          setTimeout(() => {
+            messagesContainer.style.overflow = 'auto';
+            // Ensure we can scroll properly
+            messagesContainer.scrollTop = messagesContainer.scrollTop;
+          }, 50);
+        }
+      }, 300);
     });
   }
 
