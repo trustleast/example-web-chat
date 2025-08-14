@@ -17,7 +17,7 @@ body {
 }
 
 .app {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   padding: 0;
@@ -27,7 +27,7 @@ body {
 .chat-container {
   width: 100%;
   max-width: 800px;
-  height: 100vh;
+  height: 100dvh;
   background: #0a0a0a;
   display: flex;
   flex-direction: column;
@@ -241,27 +241,6 @@ body {
 
 /* Mobile styles */
 @media (max-width: 768px) {
-  .app {
-    padding: 0;
-    align-items: stretch;
-    background: #0a0a0a;
-  }
-
-  .chat-container {
-    height: 98vh;
-    max-width: none;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
-    background: #0a0a0a;
-    position: relative;
-    display: grid;
-    grid-template:
-      "messages" 1fr
-      "input" auto
-      "keyboard" env(keyboard-inset-height, 0px);
-  }
-
   .clear-button-mobile {
     display: flex;
     align-items: center;
@@ -302,20 +281,18 @@ body {
   }
 
   .messages-container {
-    grid-area: messages;
     overflow-y: auto;
-    padding: max(80px, env(safe-area-inset-top) + 60px) 16px 24px 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
     background: transparent;
     min-height: 0;
   }
 
   .input-section {
-    grid-area: input;
-    padding: 16px;
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 0;
+    padding-top: 12px;
     background: rgba(10, 10, 10, 0.95);
     backdrop-filter: blur(20px);
     border-top: 1px solid rgba(63, 63, 70, 0.3);
