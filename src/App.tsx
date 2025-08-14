@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import "./styles.css";
 
 interface Message {
   id: string;
@@ -9,6 +8,7 @@ interface Message {
 }
 
 const STORAGE_KEY = "peerwave-chat-messages";
+const VIEWPORT_VS_CLIENT_HEIGHT_RATIO = 0.75;
 
 export const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,6 +25,19 @@ export const App: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, partialMessage]);
+
+  useEffect(() => {
+    if ("visualViewport" in window) {
+      window.visualViewport.addEventListener("resize", function (event) {
+        const target = event.target as VisualViewport;
+        if (
+          (target.height * target.scale) / window.screen.height <
+          VIEWPORT_VS_CLIENT_HEIGHT_RATIO
+        )
+          scrollToBottom();
+      });
+    }
+  }, []);
 
   const updateMessages = useCallback(
     (newMessages: Message[] | ((prev: Message[]) => Message[])) => {
@@ -82,13 +95,13 @@ export const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    // Enable Virtual Keyboard API if available
-    if ("virtualKeyboard" in navigator) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (navigator as any).virtualKeyboard.overlaysContent = true;
-    }
-  }, []);
+  // useEffect(() => {
+  //   // Enable Virtual Keyboard API if available
+  //   if ("virtualKeyboard" in navigator) {
+  //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //     (navigator as any).virtualKeyboard.overlaysContent = true;
+  //   }
+  // }, []);
 
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
