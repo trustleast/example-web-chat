@@ -19,22 +19,16 @@ body {
 .app {
   min-height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 20px;
-  background: radial-gradient(ellipse at center, #18181b 0%, #0a0a0a 100%);
+  padding: 0;
+  background: #0a0a0a;
 }
 
 .chat-container {
   width: 100%;
   max-width: 800px;
-  height: 600px;
-  background: rgba(24, 24, 27, 0.8);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(63, 63, 70, 0.3);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-              0 0 0 1px rgba(255, 255, 255, 0.05);
+  height: 100vh;
+  background: #0a0a0a;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -46,10 +40,9 @@ body {
   padding: 32px 24px 24px 24px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 16px;
   background: transparent;
-  min-height: 0; /* Allows flex shrinking */
+  min-height: 0;
 }
 
 .message {
@@ -144,9 +137,9 @@ body {
 }
 
 .input-section {
-  padding: 20px 24px 24px 24px;
-  background: rgba(24, 24, 27, 0.8);
-  backdrop-filter: blur(20px);
+  flex-shrink: 0;
+  padding: 20px 24px 32px 24px;
+  background: #0a0a0a;
   border-top: 1px solid rgba(63, 63, 70, 0.2);
 }
 
@@ -238,6 +231,10 @@ body {
   opacity: 0.3;
 }
 
+.clear-button-mobile {
+  display: none;
+}
+
 /* Mobile styles */
 @media (max-width: 768px) {
   .app {
@@ -248,13 +245,52 @@ body {
 
   .chat-container {
     height: 100vh;
-    height: 100dvh; /* Dynamic viewport height for better mobile support */
     max-width: none;
     border-radius: 0;
     box-shadow: none;
     border: none;
-    background: rgba(24, 24, 27, 0.8);
+    background: #0a0a0a;
     position: relative;
+    display: grid;
+    grid-template:
+      "messages" 1fr
+      "input" auto
+      "keyboard" env(keyboard-inset-height, 0px);
+  }
+
+  .clear-button-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top) + 10px);
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    background: rgba(39, 39, 42, 0.8);
+    border: 1px solid rgba(63, 63, 70, 0.4);
+    border-radius: 12px;
+    color: #a1a1aa;
+    cursor: pointer;
+    backdrop-filter: blur(20px);
+    transition: all 0.2s ease;
+    z-index: 1001;
+  }
+
+  .clear-button-mobile:hover:not(:disabled) {
+    background: rgba(39, 39, 42, 0.9);
+    color: #e4e4e7;
+    border-color: rgba(63, 63, 70, 0.6);
+  }
+
+  .clear-button-mobile:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .clear-button-mobile svg {
+    width: 18px;
+    height: 18px;
   }
 
   .message {
@@ -262,22 +298,29 @@ body {
   }
 
   .messages-container {
-    padding: max(24px, env(safe-area-inset-top)) 16px 100px 16px;
-    height: calc(100vh - 80px);
-    height: calc(100dvh - 80px);
+    grid-area: messages;
+    overflow-y: auto;
+    padding: max(80px, env(safe-area-inset-top) + 60px) 16px 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: transparent;
+    min-height: 0;
   }
 
   .input-section {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    grid-area: input;
     padding: 16px;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
-    background: rgba(24, 24, 27, 0.95);
+    background: rgba(10, 10, 10, 0.95);
     backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(63, 63, 70, 0.2);
-    z-index: 1000;
+    border-top: 1px solid rgba(63, 63, 70, 0.3);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Hide desktop clear link on mobile */
+  .clear-link {
+    display: none;
   }
 
   .message-input {
@@ -290,16 +333,7 @@ body {
     min-width: 70px;
   }
 
-  /* Keyboard open styles */
-  .chat-container.keyboard-open .messages-container {
-    height: calc(100vh - 140px);
-    height: calc(100svh - 140px); /* Small viewport height for when keyboard is visible */
-  }
 
-  .chat-container.keyboard-open .input-section {
-    position: fixed;
-    bottom: 0;
-  }
 }
 
 @media (max-width: 480px) {

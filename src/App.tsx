@@ -17,52 +17,14 @@ export const App: React.FC = () => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const saveMessagesToStorage = (messagesToSave: Message[]) => {
-    try {
-      const serialized = JSON.stringify(
-        messagesToSave.map((msg) => ({
-          ...msg,
-          timestamp: msg.timestamp.toISOString(),
-        }))
-      );
-      localStorage.setItem(STORAGE_KEY, serialized);
-    } catch (error) {
-      console.error("Failed to save messages to localStorage:", error);
-    }
-  };
-
-  const loadMessagesFromStorage = (): Message[] => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return [];
-
-      const parsed = JSON.parse(stored);
-      return parsed.map((msg: Message) => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp),
-      }));
-    } catch (error) {
-      console.error("Failed to load messages from localStorage:", error);
-      return [];
-    }
-  };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    // Scroll to bottom when keyboard state changes
-    if (isKeyboardOpen) {
-      setTimeout(() => scrollToBottom(), 300);
-    }
-  }, [isKeyboardOpen]);
 
   const updateMessages = useCallback(
     (newMessages: Message[] | ((prev: Message[]) => Message[])) => {
@@ -91,37 +53,11 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Handle virtual keyboard visibility on mobile
-    const handleResize = () => {
-      if (window.innerHeight < window.outerHeight * 0.75) {
-        setIsKeyboardOpen(true);
-      } else {
-        setIsKeyboardOpen(false);
-      }
-    };
-
-    const handleVisualViewportChange = () => {
-      if (window.visualViewport) {
-        const keyboardHeight = window.innerHeight - window.visualViewport.height;
-        setIsKeyboardOpen(keyboardHeight > 150);
-      }
-    };
-
-    // Use Visual Viewport API if available (better for keyboard detection)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleVisualViewportChange);
-    } else {
-      // Fallback to window resize
-      window.addEventListener('resize', handleResize);
+    // Enable Virtual Keyboard API if available
+    if ("virtualKeyboard" in navigator) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (navigator as any).virtualKeyboard.overlaysContent = true;
     }
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleVisualViewportChange);
-      } else {
-        window.removeEventListener('resize', handleResize);
-      }
-    };
   }, []);
 
   const callPeerwaveAPI = useCallback(
@@ -277,7 +213,26 @@ export const App: React.FC = () => {
 
   return (
     <div className="app">
-      <div className={`chat-container ${isKeyboardOpen ? 'keyboard-open' : ''}`}>
+      <div className="chat-container">
+        <button
+          className="clear-button-mobile"
+          onClick={clearConversation}
+          disabled={messages.length === 0}
+          aria-label="Clear conversation"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M3 6h18" />
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          </svg>
+        </button>
         <div className="messages-container">
           {messages.map((message) => (
             <div
@@ -335,3 +290,33 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
+function loadMessagesFromStorage(): Message[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+
+    const parsed = JSON.parse(stored);
+    return parsed.map((msg: Message) => ({
+      ...msg,
+      timestamp: new Date(msg.timestamp),
+    }));
+  } catch (error) {
+    console.error("Failed to load messages from localStorage:", error);
+    return [];
+  }
+}
+
+function saveMessagesToStorage(messagesToSave: Message[]) {
+  try {
+    const serialized = JSON.stringify(
+      messagesToSave.map((msg) => ({
+        ...msg,
+        timestamp: msg.timestamp.toISOString(),
+      }))
+    );
+    localStorage.setItem(STORAGE_KEY, serialized);
+  } catch (error) {
+    console.error("Failed to save messages to localStorage:", error);
+  }
+}
