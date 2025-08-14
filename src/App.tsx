@@ -62,7 +62,7 @@ export const App: React.FC = () => {
               setPartialMessage
             );
             setPartialMessage("");
-            setMessages((prev) => [
+            updateMessages((prev) => [
               ...prev,
               {
                 id: Date.now().toString() + "_assistant",
@@ -110,7 +110,7 @@ export const App: React.FC = () => {
         setPartialMessage
       );
       setPartialMessage("");
-      setMessages((prev) => [
+      updateMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString() + "_assistant",
@@ -133,26 +133,26 @@ export const App: React.FC = () => {
 
   return (
     <div className="app">
-      <div className="chat-container">
-        <button
-          className="clear-button-mobile"
-          onClick={() => updateMessages([])}
-          disabled={messages.length === 0}
-          aria-label="Clear conversation"
+      <button
+        className="clear-button-mobile"
+        onClick={() => updateMessages([])}
+        disabled={messages.length === 0}
+        aria-label="Clear conversation"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-          </svg>
-        </button>
+          <path d="M3 6h18" />
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+        </svg>
+      </button>
+      <div className="chat-container">
         <div className="messages-container">
           {messages.map((message) => (
             <div
