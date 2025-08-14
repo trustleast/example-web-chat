@@ -12,9 +12,9 @@ const STORAGE_KEY = "peerwave-chat-messages";
 
 export const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [partialMessage, setPartialMessage] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -24,7 +24,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, partialMessage]);
 
   const updateMessages = useCallback(
     (newMessages: Message[] | ((prev: Message[]) => Message[])) => {
@@ -48,8 +48,38 @@ export const App: React.FC = () => {
     if (storedMessages.length > 0) {
       setMessages(storedMessages);
       // Scroll to bottom after loading messages
-      setTimeout(() => scrollToBottom(), 100);
+      setTimeout(async () => {
+        scrollToBottom();
+        const authToken = getAuthToken();
+        if (
+          authToken &&
+          storedMessages[storedMessages.length - 1].role === "user"
+        ) {
+          setIsLoading(true);
+          try {
+            const finalMessage = await callPeerwaveAPI(
+              storedMessages,
+              setPartialMessage
+            );
+            setPartialMessage("");
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString() + "_assistant",
+                role: "assistant",
+                content: finalMessage,
+                timestamp: new Date(),
+              },
+            ]);
+          } catch (error) {
+            console.error("Error sending message:", error);
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      }, 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -59,125 +89,6 @@ export const App: React.FC = () => {
       (navigator as any).virtualKeyboard.overlaysContent = true;
     }
   }, []);
-
-  const callPeerwaveAPI = useCallback(
-    async (currentMessages: Message[]): Promise<void> => {
-      const last20Messages = currentMessages.slice(-20);
-      const apiMessages = last20Messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Redirect: "/",
-      };
-
-      if (authToken) {
-        headers["Authorization"] = authToken;
-      }
-
-      const assistantMessage: Message = {
-        id: Date.now().toString() + "_assistant",
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-      };
-
-      try {
-        const response = await fetch(
-          "https://api.peerwave.ai/api/chat/stream",
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              model: "cheapest",
-              messages: apiMessages,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const location = response.headers.get("Location");
-          if (location) {
-            window.location.href = location;
-            return;
-          }
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error("No response body");
-
-        updateMessages((prev) => [...prev, assistantMessage]);
-
-        const decoder = new TextDecoder();
-        let done = false;
-
-        while (!done) {
-          const { value, done: streamDone } = await reader.read();
-          done = streamDone;
-
-          if (value) {
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n").filter((line) => line.trim());
-
-            for (const line of lines) {
-              try {
-                const data = JSON.parse(line);
-                if (data.message?.content) {
-                  updateMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessage.id
-                        ? {
-                            ...msg,
-                            content: msg.content + data.message.content,
-                          }
-                        : msg
-                    )
-                  );
-                }
-              } catch (e) {
-                console.log("JSON parse error:", e);
-                // Ignore JSON parse errors for incomplete chunks
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("API call failed:", error);
-        updateMessages((prev) => [
-          ...prev.filter((msg) => msg.id !== assistantMessage.id),
-          {
-            ...assistantMessage,
-            content: "Sorry, there was an error processing your message.",
-          },
-        ]);
-      }
-    },
-    [authToken, updateMessages]
-  );
-
-  useEffect(() => {
-    // Check for auth token in URL hash on initial load
-    const hashParams = new URLSearchParams(location.hash.substring(1));
-    const token = hashParams.get("token");
-    if (token) {
-      setAuthToken(token);
-    }
-  }, []);
-
-  useEffect(() => {
-    // When auth token is set, retry the last user message if it exists
-    if (
-      authToken &&
-      messages.length > 0 &&
-      messages[messages.length - 1].role === "user"
-    ) {
-      setIsLoading(true);
-      callPeerwaveAPI(messages).finally(() => setIsLoading(false));
-    }
-  }, [authToken, messages, callPeerwaveAPI]);
 
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -194,16 +105,25 @@ export const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await callPeerwaveAPI([...messages, userMessage]);
+      const finalMessage = await callPeerwaveAPI(
+        [...messages, userMessage],
+        setPartialMessage
+      );
+      setPartialMessage("");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "_assistant",
+          role: "assistant",
+          content: finalMessage,
+          timestamp: new Date(),
+        },
+      ]);
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const clearConversation = () => {
-    updateMessages([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -216,7 +136,7 @@ export const App: React.FC = () => {
       <div className="chat-container">
         <button
           className="clear-button-mobile"
-          onClick={clearConversation}
+          onClick={() => updateMessages([])}
           disabled={messages.length === 0}
           aria-label="Clear conversation"
         >
@@ -244,7 +164,12 @@ export const App: React.FC = () => {
               <div className="message-bubble">{message.content}</div>
             </div>
           ))}
-          {isLoading && (
+          {partialMessage && (
+            <div className="message assistant-message">
+              <div className="message-bubble">{partialMessage}</div>
+            </div>
+          )}
+          {isLoading && partialMessage === "" && (
             <div className="message assistant-message">
               <div className="message-bubble loading">
                 <div className="typing-indicator">
@@ -279,7 +204,7 @@ export const App: React.FC = () => {
           </form>
 
           <a
-            onClick={clearConversation}
+            onClick={() => updateMessages([])}
             className={`clear-link ${messages.length === 0 ? "disabled" : ""}`}
             style={{ pointerEvents: messages.length === 0 ? "none" : "auto" }}
           >
@@ -319,4 +244,85 @@ function saveMessagesToStorage(messagesToSave: Message[]) {
   } catch (error) {
     console.error("Failed to save messages to localStorage:", error);
   }
+}
+
+function getAuthToken() {
+  const hashParams = new URLSearchParams(location.hash.substring(1));
+  return hashParams.get("token");
+}
+
+async function callPeerwaveAPI(
+  currentMessages: Message[],
+  updatePartialMessage: (content: string) => void
+): Promise<string> {
+  const last20Messages = currentMessages.slice(-20);
+  const apiMessages = last20Messages.map((msg) => ({
+    role: msg.role,
+    content: msg.content,
+  }));
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Redirect: "/",
+  };
+
+  const authToken = getAuthToken();
+  if (authToken) {
+    headers["Authorization"] = authToken;
+  }
+
+  let partialMessage = "";
+
+  try {
+    const response = await fetch("https://api.peerwave.ai/api/chat/stream", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "cheapest",
+        messages: apiMessages,
+      }),
+    });
+
+    if (!response.ok) {
+      const location = response.headers.get("Location");
+      if (location) {
+        window.location.href = location;
+        return;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let done = false;
+
+    while (!done) {
+      const { value, done: streamDone } = await reader.read();
+      done = streamDone;
+
+      if (value) {
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter((line) => line.trim());
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              partialMessage += data.message.content;
+              updatePartialMessage(partialMessage);
+            }
+          } catch (e) {
+            console.log("JSON parse error:", e);
+            // Ignore JSON parse errors for incomplete chunks
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("API call failed:", error);
+  }
+
+  return partialMessage;
 }
