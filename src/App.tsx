@@ -33,14 +33,20 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if ("visualViewport" in window) {
-      window.visualViewport.addEventListener("resize", function (event) {
+      const callback = function (event) {
+        // Virtual Keyboard opened
         const target = event.target as VisualViewport;
         if (
           (target.height * target.scale) / window.screen.height <
           VIEWPORT_VS_CLIENT_HEIGHT_RATIO
         )
           scrollToBottom();
-      });
+      };
+      window.visualViewport.addEventListener("resize", callback);
+
+      return () => {
+        window.visualViewport.removeEventListener("resize", callback);
+      };
     }
   }, []);
 
@@ -80,15 +86,17 @@ export const App: React.FC = () => {
               setPartialMessage
             );
             setPartialMessage("");
-            updateMessages((prev) => [
-              ...prev,
-              {
-                id: Date.now().toString() + "_assistant",
-                role: "assistant",
-                content: finalMessage,
-                timestamp: new Date(),
-              },
-            ]);
+            if (finalMessage !== "") {
+              updateMessages((prev) => [
+                ...prev,
+                {
+                  id: Date.now().toString() + "_assistant",
+                  role: "assistant",
+                  content: finalMessage,
+                  timestamp: new Date(),
+                },
+              ]);
+            }
           } catch (error) {
             console.error("Error sending message:", error);
           } finally {
@@ -99,14 +107,6 @@ export const App: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // useEffect(() => {
-  //   // Enable Virtual Keyboard API if available
-  //   if ("virtualKeyboard" in navigator) {
-  //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //     (navigator as any).virtualKeyboard.overlaysContent = true;
-  //   }
-  // }, []);
 
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -128,15 +128,17 @@ export const App: React.FC = () => {
         setPartialMessage
       );
       setPartialMessage("");
-      updateMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString() + "_assistant",
-          role: "assistant",
-          content: finalMessage,
-          timestamp: new Date(),
-        },
-      ]);
+      if (finalMessage !== "") {
+        updateMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "_assistant",
+            role: "assistant",
+            content: finalMessage,
+            timestamp: new Date(),
+          },
+        ]);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
@@ -322,7 +324,7 @@ async function callPeerwaveAPI(
       const location = response.headers.get("Location");
       if (location) {
         window.location.href = location;
-        return;
+        return "";
       }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
